@@ -9,7 +9,29 @@ permissions:
   contents: read
 
 jobs:
+  check_secrets:
+    name: Check deployment secrets
+    runs-on: ubuntu-latest
+    outputs:
+      enabled: ${{ steps.check.outputs.enabled }}
+    steps:
+      - name: Check whether WordPress.org SVN credentials are configured
+        id: check
+        env:
+          SVN_USERNAME: ${{ secrets.SVN_USERNAME }}
+          SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}
+        run: |
+          if [ -n "$SVN_USERNAME" ] && [ -n "$SVN_PASSWORD" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+            echo "WordPress.org SVN credentials found; the deploy job will run."
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "WordPress.org SVN credentials are not configured; skipping the deploy job."
+          fi
+
   deploy:
+    needs: check_secrets
+    if: needs.check_secrets.outputs.enabled == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
